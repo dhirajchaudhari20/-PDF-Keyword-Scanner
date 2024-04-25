@@ -1,8 +1,10 @@
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
-import pdfreader
+import PyPDF2  # Assuming PyPDF2 for PDF reading
 
 def browse_files():
+    """Opens a file dialog to select multiple PDF files."""
     file_paths = filedialog.askopenfilenames(filetypes=[("PDF Files", "*.pdf")])
     if file_paths:
         file_list.delete(0, tk.END)
@@ -10,29 +12,54 @@ def browse_files():
             file_list.insert(tk.END, file_path)
 
 def search_keyword():
-    keyword = keyword_entry.get()
+    """Searches for keywords in selected PDFs and generates an Excel sheet."""
+    keyword = keyword_entry.get().strip()  # Remove leading/trailing whitespace
 
     if not keyword:
         messagebox.showerror("Error", "Please enter a keyword.")
         return
 
-    for file_path in file_list.get(0, tk.END):
-        try:
-            with open(file_path, 'rb') as f:
-                pdf_reader = pdfreader.PdfReader(f)
-                text = pdf_reader.pages[0].extract_text()
+    try:
+        # Create an Excel workbook and worksheet
+        import openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["PDF File", "Keyword Found?"])  # Header row
 
-            if keyword in text:
-                messagebox.showinfo("Success", f"Keyword '{keyword}' found in {file_path}.")
-            else:
-                messagebox.showinfo("No Results", f"Keyword '{keyword}' not found in {file_path}.")
+        for file_path in file_list.get(0, tk.END):
+            try:
+                with open(file_path, 'rb') as f:
+                    pdf_reader = PyPDF2.PdfReader(f)
+                    text = ""
+                    for page in pdf_reader.pages:
+                        text += page.extract_text()
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Error processing PDF file: {e}")
+                if keyword.lower() in text.lower():  # Case-insensitive search
+                    match_found = "Yes"
+                else:
+                    match_found = "No"
+
+                ws.append([file_path, match_found])
+
+                # Save the Excel workbook (optional prompt for location)
+                save_location = filedialog.asksaveasfilename(
+                    defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")]
+                )
+                if save_location:
+                    wb.save(save_location)
+                    messagebox.showinfo("Success", f"Results saved to '{save_location}'.")
+                else:
+                    messagebox.showinfo("Information", "Results not saved. You can copy and paste them manually.")
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Error processing PDF file '{file_path}': {e}")
+
+    except ImportError:
+        messagebox.showerror("Error", "Please install the 'openpyxl' library using 'pip install openpyxl'.")
 
 # Create main window
 root = tk.Tk()
-root.title("PDF Keyword Search")
+root.title("PDF Keyword Scanner")
 
 # Create widgets
 file_label = tk.Label(root, text="Select PDF Files:")
