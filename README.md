@@ -1,4 +1,3 @@
-Sure, here's a README file you can use for your Python script on GitHub:
 
 PDF Keyword Scanner
 
